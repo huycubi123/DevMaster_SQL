@@ -124,27 +124,55 @@ having Min(Ketqua.Diem)>=5
 -- 22. Thống kê số sinh viên đậu và số sinh viên rớt của từng môn, biết rằng sinh viên rớt khi điểm của môn nhỏ hơn 5, gồm có: Mã môn, Tên môn, Số sinh viên đậu, Số sinh viên rớt
 select MonHoc.MaMH, MonHoc.TenMH, sum(iif(Diem>=5,1,0)) as N'Sinh viên đậu', sum(iif(Diem>=5,0,1)) as N'Sinh viên rớt'  from MonHoc JOIN 
 (
--- Lấy danh sách điểm duy nhất, loại bỏ trùng lặp ở Mã Sinh Viên ???????????????????
+-- Lấy danh sách điểm duy nhất, loại bỏ trùng lặp ở Mã Sinh Viên do có thể 1 sinh viên thi 2  ????????????????????????? 
     SELECT MaMH, Diem 
     FROM Ketqua 
     GROUP BY MaMH, Diem
 ) AS KQ ON MonHoc.MaMH = KQ.MaMH
 group by MonHoc.MaMH,MonHoc.TenMH
-select MaMH,Diem from Ketqua group by Ketqua.MaMH,Diem
+select * from Ketqua 
 
 
 -- 23. Cho biết môn nào không có sinh viên rớt, gồm có: Mã môn, Tên môn
+select MonHoc.MaMH, MonHoc.TenMH from MonHoc JOIN 
+Ketqua on MonHoc.MaMH = Ketqua.MaMH
+group by MonHoc.MaMH,MonHoc.TenMH
+having MIN(Ketqua.Diem) >=5
 
 -- 24. Danh sách sinh viên không có môn nào rớt, thông tin gồm: Mã sinh viên, Họ tên, Mã khoa
+select SinhVien.MaSV,HoSV,TenSV,MaKH from SinhVien
+join Ketqua on SinhVien.MaSV=Ketqua.MaSV
+group by SinhVien.MaSV,HoSV,TenSV,MaKH
+having MIN(Diem)>=5
 
 -- 25. Danh sách các sinh viên rớt trên 2 môn, gồm Mã sinh viên, Họ sinh viên, Tên sinh viên, Mã khoa
+select SV.MaSV, SV.HoSV, SV.TenSV, SV.MaKH
+from SinhVien SV
+join Ketqua KQ ON SV.MaSV = KQ.MaSV
+where KQ.Diem < 5 -- Bước 1: Chỉ giữ lại những dòng bị rớt
+group by SV.MaSV, SV.HoSV, SV.TenSV, SV.MaKH
+having count(KQ.MaSV) >= 2; -- Bước 2: Sinh viên nào có trên 2 dòng rớt thì lấy
 
 -- 26. Cho biết danh sách những khoa có nhiều hơn 10 sinh viên, gồm Mã khoa, Tên khoa, Tổng số sinh viên của khoa
+select Khoa.MaKH,TenKH from Khoa join SinhVien on Khoa.MaKH=SinhVien.MaKH
+group by Khoa.MaKH,TenKH
+having count(SinhVien.MaSV) >5
 
 -- 27. Danh sách những sinh viên thi nhiều hơn 4 môn, gồm có Mã sinh viên, Họ tên sinh viên, Số môn thi
+select Ketqua.MaSV,TenSV, COUNT(Ketqua.MaMH) as SoMonThi from Ketqua join SinhVien on Ketqua.MaSV=SinhVien.MaSV
+group by Ketqua.MaSV,TenSV
+having count(Ketqua.MaMH) >4
 
 -- 28. Cho biết khoa có 5 sinh viên nam trở lên, thông tin gồm có: Mã khoa, Tên khoa, Tổng số sinh viên nam
-
+select Khoa.MaKH, Khoa.TenKH, sum(iif(Phai=0,1,0)) as SoSV_Nam    from Khoa join SinhVien on Khoa.MaKH=SinhVien.MaKH
+group by Khoa.MaKH,TenKH
+having sum(iif(Phai=1,1,0)) > 5
+ 
 -- 29. Danh sách những sinh viên có trung bình điểm thi lớn hơn 4, gồm các thông tin sau: Họ tên sinh viên, Tên khoa, Phái, Điểm trung bình các môn
-
+select HoSV,TenSV,TenKH,Phai, AVG(Diem) as DiemTB from SinhVien join Ketqua on SinhVien.MaSV=Ketqua.MaSV join Khoa on SinhVien.MaKH=Khoa.MaKH
+group by HoSV,TenSV,TenKH,Phai
+having AVG(Diem)>4
 -- 30. Cho biết trung bình điểm thi của từng môn, chỉ lấy môn nào có trung bình điểm thi lớn hơn 6, thông tin gồm có: Mã môn, Tên môn, Trung bình điểm
+select MonHoc.MaMH,TenMH, round( AVG(Diem) ,2)as DiemTB from MonHoc join Ketqua on MonHoc.MaMH=Ketqua.MaMH
+group by MonHoc.MaMH,TenMH
+having AVG(Diem)>6
