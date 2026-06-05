@@ -122,16 +122,12 @@ group by Khoa.MaKH,TenKH
 having Min(Ketqua.Diem)>=5
 
 -- 22. Thống kê số sinh viên đậu và số sinh viên rớt của từng môn, biết rằng sinh viên rớt khi điểm của môn nhỏ hơn 5, gồm có: Mã môn, Tên môn, Số sinh viên đậu, Số sinh viên rớt
-select MonHoc.MaMH, MonHoc.TenMH, sum(iif(Diem>=5,1,0)) as N'Sinh viên đậu', sum(iif(Diem>=5,0,1)) as N'Sinh viên rớt'  from MonHoc JOIN 
-(
--- Lấy danh sách điểm duy nhất, loại bỏ trùng lặp ở Mã Sinh Viên do có thể 1 sinh viên thi 2  ????????????????????????? 
-    SELECT MaMH, Diem 
-    FROM Ketqua 
-    GROUP BY MaMH, Diem
-) AS KQ ON MonHoc.MaMH = KQ.MaMH
+select MonHoc.MaMH, MonHoc.TenMH, sum(iif(Diem>=5,1,0)) as N'Sinh viên đậu', sum(iif(Diem>=5,0,1)) as N'Sinh viên rớt'  from MonHoc join Ketqua on MonHoc.MaMH=Ketqua.MaMH
 group by MonHoc.MaMH,MonHoc.TenMH
-select * from Ketqua 
-
+-- Cách 2 
+select MH.MaMH, MH.TenMH, (select count(*) from Ketqua where Diem>5 and MaMH=MH.MaMH) as SinhVienDAU , (select count(*) from Ketqua where Diem<=5 and MaMH=MH.MaMH) as SinhVienRot from MonHoc MH
+group by MH.MaMH,MH.TenMH
+select * from Ketqua
 
 -- 23. Cho biết môn nào không có sinh viên rớt, gồm có: Mã môn, Tên môn
 select MonHoc.MaMH, MonHoc.TenMH from MonHoc JOIN 
