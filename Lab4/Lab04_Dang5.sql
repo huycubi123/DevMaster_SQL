@@ -40,12 +40,17 @@ select sv.MaSV,sv.HoSV,sv.TenSV, sv.NoiSinh from SinhVien sv
 where sv.NoiSinh = (select top 1 NoiSinh from SinhVien where MaKH='AV' order by HocBong desc )
 
 -- 11. Danh sách sinh viên có điểm cao nhất ứng với mỗi môn, gồm thông tin: Mã sinh viên, Họ tên sinh viên, Tên môn, Điểm.
-select sv.MaSV,sv.HoSV,sv.TenSV, TenMH, kq.Diem from SinhVien sv join Ketqua kq on sv.MaSV=kq.MaSV join MonHoc mh on kq.MaMH=mh.MaMH
+select sv.MaSV,sv.HoSV,sv.TenSV, TenMH, kq.Diem 
+from SinhVien sv join Ketqua kq on sv.MaSV=kq.MaSV 
+join MonHoc mh on kq.MaMH=mh.MaMH
 join (
-select MaMH, max(Diem) as Diem from Ketqua
-group by MaMH
-) as TopMax on kq.Diem=TopMax.Diem and kq.MaMH=TopMax.MaMH
+	select MaMH, max(Diem) as Diem from Ketqua
+	group by MaMH
+	) as TopMax on kq.Diem=TopMax.Diem and kq.MaMH=TopMax.MaMH
 
 -- 12. Các sinh viên có học bổng cao nhất theo từng khoa, gồm Mã sinh viên, Tên khoa, Học bổng.
-select sv.MaSV, sv.TenSV,kh.TenKH,sv.HocBong from SinhVien sv join Khoa kh on sv.MaKH=kh.MaKH
-join (select MaKH, MAX(HocBong) as HBMAX from SinhVien group by MaKH) as MaxKhoa on sv.MaKH=MaxKhoa.MaKH and sv.HocBong=MaxKhoa.HBMAX
+select sv.MaSV, sv.TenSV,kh.TenKH,sv.HocBong 
+from SinhVien sv 
+	join Khoa kh on sv.MaKH=kh.MaKH
+	join (select MaKH, MAX(HocBong) as HBMAX from SinhVien group by MaKH) 
+	as MaxKhoa on sv.MaKH=MaxKhoa.MaKH and sv.HocBong=MaxKhoa.HBMAX
