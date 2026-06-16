@@ -7,12 +7,116 @@
 -- Trong đó cần kiểm tra các ràng buộc dữ liệu phải hợp lệ.
 --     * Số đặt hàng phải có trong bảng DONDH
 --     * Ngày nhập hàng phải sau ngày đặt hàng.
+create trigger tg_PNHAP_Them on PNHAP
+for insert 
+as begin 
+	if not exists (
+	select * from inserted join DONDH on inserted.SoDH=DONDH.SoDH 
+	where inserted.SoDH=DONDH.SoDH
+	)
+	begin 
+		print N'Số đặt hàng phải có trong bảng DONDH'
+		rollback transaction 
+		return
+	end
+	if exists (
+	select * from inserted join DONDH on inserted.SoDH=DONDH.SoDH
+	where inserted.NgayNhap < DONDH.NgayDH
+	)
+	begin 
+		print N'Ngày nhập phải sau ngày đặt hàng'
+		rollback transaction 
+		return 
+	end
+end
+--------------
+insert into PNHAP values ('N100', '2016-01-20', 'D001')
+insert into PNHAP values ('N300', '2013-01-20', 'D001')
 
 -- 2. Xây dựng trigger khi thêm mới dữ liệu vào bảng CTPNHAP với tên tg_CTPNHAP_Them. 
 -- Trong đó cần kiểm tra các ràng buộc dữ liệu phải hợp lệ.
 --     * Mã vật tư phải có trong bảng CTDONDH ứng với số đặt hàng của phiếu nhập
---     * Số lượng nhập hàng <= (Số lượng đặt – Tổng số lượng đã nhập vào trước đó)
+--     * Số lượng nhập hàng <= (Số lượng đặt – Tổng số lượng đã nhập vào trước đó) (Sl nhập mới cộng số lượng có sẵn = số tổng sau insert phải < SlDat)
+create trigger tg_CTPNHAP_Them on CTPNHAP
+for insert 
+as begin 
+	if not exists (
+		select * from inserted join CTDONDH on inserted.Mavtu=CTDONDH.Mavtu join PNHAP on inserted.SoPn=PNHAP.SoPn
+		where inserted.Mavtu=CTDONDH.Mavtu and CTDONDH.SoDH=PNHAP.SoDH
+	)
+	begin 
+		print N'Mã vật tư phải có trong bảng CTDONDH ứng với số đặt hàng của phiếu nhập'
+		rollback transaction 
+		return
+	end
+	if exists (
+		select *
+		from inserted i join CTDONDH c on i.Mavtu = c.Mavtu join PNHAP p on i.SoPn = p.SoPn and c.SoDH = p.SoDH
+		where
+			(
+				select isnull(sum(a.SLNhap),0)
+				from CTPNHAP a join PNHAP b on a.SoPn=b.SoPn
+				where a.Mavtu=i.Mavtu and b.SoDH=p.SoDH
+			) > c.SLDat
+	)    -- Trigger hoạt động sau khi đã chèn nên SLNhap đang xét đã bao gồm cả cái đã thêm rồi (ở bảng PNHAP)
+	begin 
+		print N'Số lượng nhập vượt quá số lượng đặt'
+		rollback transaction 
+		return
+	end
+end
+---------
+select * from CTDONDH where SoDH='D001' and Mavtu='DD01'
+select * from CTPNHAP where Mavtu='DD01'
+insert into CTPNHAP values ('N004','DD01',1,2500000)
+insert into CTPNHAP values ('N004','TV32',3,2500000)
 
+
+create trigger tg_CTPNHAP_Them on CTPNHAP
+for insert 
+as begin 
+	
+end
+
+--------------------------------
+ALTER TRIGGER tg_CTPNHAP_Them 
+ON CTPNHAP
+FOR INSERT
+AS
+BEGIN
+	--ma vat tu phai co trong bang CTDONDH ung voi so dat hang cua phieu nhap
+	--=>> so don hang trong bang CTDANDH trung voi so don hang trong bang PNHAP
+    DECLARE @SoDH_CTDonHang char(4) = null
+	DECLARE @SoDH_PNhap char(4)
+
+	SELECT @SoDH_PNhap = SoDH FROM PNHAP WHERE SoPn = (SELECT SoPn FROM inserted)
+
+	SELECT @SoDH_CTDonHang = SoDH FROM CTDONDH WHERE Mavtu = (SELECT Mavtu FROM inserted)
+													AND SoDH = @SoDH_PNhap
+	SELECT SoDH FROM CTDONDH WHERE Mavtu = N'TV40'
+									AND SoDH = N'D004'
+	IF @SoDH_CTDonHang <> @SoDH_PNhap -- @SoDH_CTDonHang = NULL
+		ROLLBACK TRANSACTION
+
+	--so luong nhap hang = so luong dat - tong so nhap vao truoc do
+	--tim so luong nhap vao truoc do
+	-- => tìm được các mã phieuesvaf mã vật tư cho bảng [CTNHAP]
+	-- => phiếu nhập thì phải tìm từ số SoDH có mã vật tư tương ứng
+	-- => Tìm SoHD tương ứng thì cần tìm trong bảng CTDONDH (ra nhiều)
+	-- => Loại bỏ bằng cách tìm trong PNHAP với SoDH được lấy từ phiếu nhập SoPN của bảng inserted
+
+	DECLARE @SLNhap int
+	SELECT @SLNhap = SLNhap FROM CTPNHAP WHERE Mavtu = (SELECT Mavtu FROM inserted) AND
+			SoPn = (SELECT SoPn FROM PNHAP WHERE SoDH = (SELECT SoDH FROM CTDONDH WHERE Mavtu = (SELECT Mavtu FROM inserted)))
+	SELECT SLNhap FROM CTPNHAP WHERE Mavtu = 'DD01'
+
+	SELECT * FROM [dbo].[CTDONDH] WHERE Mavtu ='DD01'
+	SELECT * FROM [dbo].[PNHAP] WHERE SoDH IN (SELECT SoDH FROM [dbo].[CTDONDH] WHERE Mavtu = 'DD02')
+	SELECT * FROM [dbo].[CTPNHAP] WHERE SoPn IN (SELECT SoPn FROM [dbo].[PNHAP] WHERE SoDH IN (SELECT ............
+
+	IF @SoDH_CTDonHang <> @SoDH_PNhap
+		ROLLBACK TRANSACTION
+END
 
 -- =======================================================================================
 -- Bài 2: Tạo Trigger khi xóa dữ liệu dùng để kiểm tra các ràng buộc toàn vẹn dữ liệu
